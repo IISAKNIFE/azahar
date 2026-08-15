@@ -105,7 +105,10 @@ object SettingsFile {
     fun readCustomGameSettings(
         gameId: String,
         view: SettingsActivityView?
-    ): HashMap<String, SettingSection?> = readFile(getCustomGameSettingsFile(gameId), true, view)
+): HashMap<String, SettingSection?> {
+    val file = findCustomGameSettingsFile(gameId) ?: return SettingsSectionMap()
+    return readFile(file, true, view)
+}
 
     /**
      * Saves a Settings HashMap to a given .ini file on disk. If unsuccessful, outputs an error
@@ -145,7 +148,40 @@ object SettingsFile {
         }
     }
 
-    fun saveFile(fileName: String, setting: AbstractSetting) {
+fun saveCustomFile(
+    gameId: String,
+    sections: TreeMap<String, SettingSection?>,
+    view: SettingsActivityView
+) {
+    val ini = getOrCreateCustomGameSettingsFile(gameId)
+    try {
+        val context: Context = CitraApplication.appContext
+        val outputStream = context.contentResolver.openOutputStream(ini.uri, "wt")
+        val parser = Wini()
+        for ((_, section) in sections) {
+            if (section != null) writeSection(parser, section)
+        }
+        parser.store(outputStream)
+        outputStream!!.flush()
+        outputStream.close()
+    } catch (e: Exception) {
+        Log.error("[SettingsFile] Error saving custom file: config/custom/$gameId.ini: ${e.message}")
+        view.onSettingsFileNotFound()
+    }
+}
+
+fun saveCustomFileRaw(gameId: String, contents: String) {
+    val ini = getOrCreateCustomGameSettingsFile(gameId)
+    val context: Context = CitraApplication.appContext
+    context.contentResolver.openOutputStream(ini.uri, "wt").use { out ->
+        out?.write(contents.toByteArray())
+        out?.flush()
+    }
+}
+
+fun customExists(gameId: String): Boolean {
+    return findCustomGameSettingsFile(gameId) != null
+}
         val ini = getSettingsFile(fileName)
         try {
             val context: Context = CitraApplication.appContext
@@ -182,10 +218,26 @@ object SettingsFile {
         return configDirectory!!.findFile("$fileName.ini")!!
     }
 
-    private fun getCustomGameSettingsFile(gameId: String): DocumentFile {
+    private fun findCustomGameSettingsFile(gameId: String): DocumentFile? {
         val root = DocumentFile.fromTreeUri(CitraApplication.appContext, Uri.parse(userDirectory))
-        val configDirectory = root!!.findFile("GameSettings")
-        return configDirectory!!.findFile("$gameId.ini")!!
+        val configDir = root?.findFile("config") ?: return null
+        val customDir = configDir.findFile("custom") ?: return null
+        return customDir.findFile("$gameId.ini")
+    }
+
+    private fun getOrCreateCustomGameSettingsFile(gameId: String): DocumentFile {
+        val root = DocumentFile.fromTreeUri(CitraApplication.appContext, Uri.parse(userDirectory))!!
+        val configDir = root.findFile("config") ?: root.createDirectory("config")
+        var customDir = configDir?.findFile("custom")
+        if (customDir == null || !customDir.isDirectory) {
+            customDir = configDir?.createDirectory("custom")
+        }
+        var file = customDir!!.findFile("$gameId.ini")
+        if (file == null) {
+            // Use generic MIME to avoid providers appending ".txt" to the name
+            file = customDir.createFile("*/*", "$gameId.ini")
+        }
+        return file!!
     }
 
     private fun sectionFromLine(line: String, isCustomGame: Boolean): SettingSection {

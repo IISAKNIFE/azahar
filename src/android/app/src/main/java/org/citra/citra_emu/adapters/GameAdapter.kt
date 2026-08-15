@@ -60,6 +60,8 @@ import org.citra.citra_emu.utils.FileUtil
 import org.citra.citra_emu.utils.GameIconUtils
 import org.citra.citra_emu.utils.Log
 import org.citra.citra_emu.viewmodel.GamesViewModel
+import org.citra.citra_emu.features.settings.ui.SettingsActivity
+import org.citra.citra_emu.features.settings.utils.SettingsFile
 
 class GameAdapter(
     private val activity: AppCompatActivity,
@@ -581,36 +583,45 @@ class GameAdapter(
             bottomSheetDialog.dismiss()
         }
 
-        val compressDecompressButton = bottomSheetView.findViewById<MaterialButton>(
-            R.id.compress_decompress
+bottomSheetView.findViewById<MaterialButton>(R.id.application_settings).setOnClickListener {
+    SettingsActivity.launch(
+        context,
+        SettingsFile.FILE_NAME_CONFIG,
+        String.format("%016X", holder.game.titleId)
+    )
+    bottomSheetDialog.dismiss()
+}
+
+val compressDecompressButton = bottomSheetView.findViewById<MaterialButton>(
+    R.id.compress_decompress
+)
+if (game.isInstalled) {
+    compressDecompressButton.setOnClickListener {
+        Toast.makeText(
+            context,
+            context.getString(R.string.compress_decompress_installed_app),
+            Toast.LENGTH_LONG
+        ).show()
+    }
+    compressDecompressButton.alpha = 0.38f
+} else {
+    compressDecompressButton.setOnClickListener {
+        val shouldCompress = !game.isCompressed
+        val recommendedExt = NativeLibrary.getRecommendedExtension(
+            holder.game.path,
+            shouldCompress
         )
-        if (game.isInstalled) {
-            compressDecompressButton.setOnClickListener {
-                Toast.makeText(
-                    context,
-                    context.getString(R.string.compress_decompress_installed_app),
-                    Toast.LENGTH_LONG
-                ).show()
-            }
-            compressDecompressButton.alpha = 0.38f
-        } else {
-            compressDecompressButton.setOnClickListener {
-                val shouldCompress = !game.isCompressed
-                val recommendedExt = NativeLibrary.getRecommendedExtension(
-                    holder.game.path,
-                    shouldCompress
-                )
-                val baseName = holder.game.filename.substringBeforeLast('.')
-                onRequestCompressOrDecompress?.invoke(
-                    holder.game.path,
-                    "$baseName.$recommendedExt",
-                    shouldCompress
-                )
-                bottomSheetDialog.dismiss()
-            }
-        }
-        compressDecompressButton.text =
-            context.getString(if (!game.isCompressed) R.string.compress else R.string.decompress)
+        val baseName = holder.game.filename.substringBeforeLast('.')
+        onRequestCompressOrDecompress?.invoke(
+            holder.game.path,
+            "$baseName.$recommendedExt",
+            shouldCompress
+        )
+        bottomSheetDialog.dismiss()
+    }
+}
+compressDecompressButton.text =
+    context.getString(if (!game.isCompressed) R.string.compress else R.string.decompress)
 
         bottomSheetView.findViewById<MaterialButton>(R.id.menu_button_open).setOnClickListener {
             showOpenContextMenu(it, game)

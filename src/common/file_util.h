@@ -215,6 +215,7 @@ bool SetCurrentDir(const std::string& directory);
 void SetUserPath(const std::string& path = "");
 
 void SetCurrentRomPath(const std::string& path);
+[[nodiscard]] std::string GetCurrentRomPath();
 
 // Returns a pointer to a string with a Citra data dir in the user's home
 // directory. To be used in "multi-user" mode (that is, installed).
@@ -703,3 +704,4 @@ void OpenFStream(T& fstream, const std::string& filename, std::ios_base::openmod
 }
 
 BOOST_CLASS_EXPORT_KEY(FileUtil::IOFile)
+BOOST_CLASS_EXPORT_KEY(FileUtil::CryptoIOFile)

@@ -78,6 +78,7 @@ class SettingsAdapter(private val fragmentView: SettingsFragmentView, public val
     DialogInterface.OnClickListener,
     DialogInterface.OnMultiChoiceClickListener {
     private var settings: ArrayList<SettingsItem>? = null
+    var isPerGame: Boolean = false
     private var clickedItem: SettingsItem? = null
     private var clickedPosition: Int
     private var dialog: AlertDialog? = null
@@ -600,26 +601,7 @@ class SettingsAdapter(private val fragmentView: SettingsFragmentView, public val
         MaterialAlertDialogBuilder(context)
             .setMessage(R.string.reset_setting_confirmation)
             .setPositiveButton(android.R.string.ok) { _: DialogInterface, _: Int ->
-                when (setting) {
-                    is AbstractBooleanSetting -> setting.boolean = setting.defaultValue as Boolean
-
-                    is AbstractFloatSetting -> {
-                        if (setting is ScaledFloatSetting) {
-                            setting.float = setting.defaultValue * setting.scale
-                        } else {
-                            setting.float = setting.defaultValue as Float
-                        }
-                    }
-
-                    is AbstractIntSetting -> setting.int = setting.defaultValue as Int
-
-                    is AbstractStringSetting -> setting.string = setting.defaultValue as String
-
-                    is AbstractShortSetting -> setting.short = setting.defaultValue as Short
-                }
-                notifyItemChanged(position)
-                fragmentView.onSettingChanged()
-                fragmentView.loadSettingsList()
+resetSettingToDefault(setting, position)
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
@@ -627,23 +609,51 @@ class SettingsAdapter(private val fragmentView: SettingsFragmentView, public val
         return true
     }
 
-    fun onInputBindingLongClick(setting: InputBindingSetting, position: Int): Boolean {
-        MaterialAlertDialogBuilder(context)
-            .setMessage(R.string.reset_setting_confirmation)
-            .setPositiveButton(android.R.string.ok) { _: DialogInterface, _: Int ->
-                setting.removeOldMapping()
-                notifyItemChanged(position)
-                fragmentView.onSettingChanged()
-                fragmentView.loadSettingsList()
+fun resetSettingToDefault(setting: AbstractSetting, position: Int) {
+    when (setting) {
+        is AbstractBooleanSetting -> setting.boolean = setting.defaultValue as Boolean
+
+        is AbstractFloatSetting -> {
+            if (setting is ScaledFloatSetting) {
+                setting.float = setting.defaultValue * setting.scale
+            } else {
+                setting.float = setting.defaultValue as Float
             }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+        }
 
-        return true
+        is AbstractIntSetting -> setting.int = setting.defaultValue as Int
+
+        is AbstractStringSetting -> setting.string = setting.defaultValue as String
+
+        is AbstractShortSetting -> setting.short = setting.defaultValue as Short
     }
+    notifyItemChanged(position)
+    fragmentView.onSettingChanged()
+    fragmentView.loadSettingsList()
+}
 
-    fun onClickDisabledSetting(isRuntimeDisabled: Boolean, @StringRes disabledMessage: Int) {
-        val titleId = if (isRuntimeDisabled) {
+fun isAtCompiledDefault(s: AbstractSetting): Boolean = when (s) {
+    is AbstractBooleanSetting -> s.boolean == s.defaultValue
+    is AbstractIntSetting -> s.int == s.defaultValue
+    is ScaledFloatSetting -> s.float == s.defaultValue * s.scale
+    is AbstractFloatSetting -> s.float == s.defaultValue
+    is AbstractShortSetting -> s.short == s.defaultValue
+    is AbstractStringSetting -> s.string == s.defaultValue
+    else -> false
+}
+
+fun onClickDisabledSetting(isRuntimeDisabled: Boolean, @StringRes disabledMessage: Int) {
+    val titleId = if (isRuntimeDisabled) {
+        R.string.setting_not_editable
+    } else {
+        R.string.setting_disabled
+    }
+    MaterialAlertDialogBuilder(context)
+        .setTitle(titleId)
+        .setMessage(disabledMessage)
+        .setPositiveButton(android.R.string.ok, null)
+        .show()
+}
             R.string.setting_not_editable
         } else {
             R.string.setting_disabled

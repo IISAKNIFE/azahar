@@ -72,6 +72,7 @@ class SettingsFragmentPresenter(private val fragmentView: SettingsFragmentView) 
     fun onViewCreated(settingsAdapter: SettingsAdapter) {
         this.settingsAdapter = settingsAdapter
         preferences = PreferenceManager.getDefaultSharedPreferences(CitraApplication.appContext)
+        settingsAdapter.isPerGame = !TextUtils.isEmpty(gameId)
         loadSettingsList()
     }
 
@@ -81,9 +82,9 @@ class SettingsFragmentPresenter(private val fragmentView: SettingsFragmentView) 
         }
 
         val section = settings.getSection(setting.section!!)!!
-        if (section.getSetting(setting.key!!) == null) {
-            section.putSetting(setting)
-        }
+        // Update setting and mark as touched so changes persist and save explicitly.
+        section.putSetting(setting)
+        settings.markTouched(setting)
     }
 
     fun loadSettingsList() {
